@@ -6,6 +6,9 @@
 package photoSearch.searchFunctionality;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,10 +24,13 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import photoSearch.models.AnnotationUnit;
+import photoSearch.models.CandidatesUnit;
 import static photoSearch.models.Constants.EMPTY;
 import static photoSearch.models.Prefixes.DBPEDIA_ONTOLOGY;
 import static photoSearch.models.Prefixes.SCHEMA_ONTOLOGY;
+import photoSearch.models.ResourceCandidate;
 import photoSearch.models.ResourceItem;
+import photoSearch.models.SurfaceForm;
 import photoSearch.tranformers.ParagraphTransformer;
 
 /**
@@ -127,6 +133,10 @@ public class DBpediaSpotlight {
 
     }
 
+    private void fixPrefixes(ResourceCandidate resource) {
+        resource.setTypes(fixPrefixes(resource.getTypes()));
+    }
+
     /**
      * This method parses the input HTTP request and returns the string
      * representation of the response.
@@ -157,7 +167,7 @@ public class DBpediaSpotlight {
      * Entities in it as an AnnotationUnit instance.
      *
      * @param text
-     * @return
+     * @return identified Named Entities in it as an AnnotationUnit instance
      * @throws IOException
      */
     public AnnotationUnit get(String text) throws IOException {
@@ -169,12 +179,133 @@ public class DBpediaSpotlight {
         return get();
     }
 
+    /**
+     * This method parses the input text and returns candidate links for each of
+     * the identified Named Entities in it as an CandidatesUnit instance.
+     *
+     * @param text
+     * @param confidence
+     * @param support
+     * @return candidate links for each of the identified Named Entities in it
+     * as an CandidatesUnit instance.
+     * @throws IOException
+     */
+    public CandidatesUnit getCandidates(String text, double confidence, int support) throws IOException {
+
+        List<NameValuePair> params = new ArrayList<NameValuePair>();
+        params.add(new BasicNameValuePair("text", text));
+        params.add(new BasicNameValuePair("confidence", String.valueOf(confidence)));
+        params.add(new BasicNameValuePair("support", String.valueOf(support)));
+        requestCand.setEntity(new UrlEncodedFormEntity(params));
+
+        return getCandidates();
+    }
+
+    /**
+     * Retrieves all the fields of a candidate resource
+     *
+     * @param resource
+     * @return a ResourceCandidate instance
+     */
+    private ResourceCandidate getResourceCandidate(JsonElement resource) {
+        String label = resource.getAsJsonObject().get("@label").toString();
+        String uri = resource.getAsJsonObject().get("@uri").toString();
+        String contextualScore = resource.getAsJsonObject().get("@contextualScore").toString();
+        String percentageOfSecondRank = resource.getAsJsonObject().get("@percentageOfSecondRank").toString();
+        String support = resource.getAsJsonObject().get("@support").toString();
+        String priorScore = resource.getAsJsonObject().get("@priorScore").toString();
+        String finalScore = resource.getAsJsonObject().get("@finalScore").toString();
+        String types = resource.getAsJsonObject().get("@types").toString();
+
+        ResourceCandidate resourceCandidate = new ResourceCandidate(uri, label, contextualScore, percentageOfSecondRank, support, priorScore, finalScore, types);
+        return resourceCandidate;
+    }
+
+    /**
+     * Returns candidate links for each of the identified Named Entities in it
+     * as an CandidatesUnit instance.
+     *
+     * @return links for each of the identified Named Entities in it as an
+     * CandidatesUnit instance.
+     * @throws IOException
+     */
+    public CandidatesUnit getCandidates() throws IOException {
+        JsonParser parser = new JsonParser();
+        String json = getContent(requestCand);
+
+        CandidatesUnit candidatesUnit = new CandidatesUnit();
+        JsonElement jsonTree = parser.parse(json);
+        if (jsonTree.isJsonObject()) {
+            JsonObject jsonObject = jsonTree.getAsJsonObject();
+            JsonElement annotation = jsonObject.get("annotation");
+            if (annotation.isJsonObject()) {
+                String text = annotation.getAsJsonObject().get("@text").toString();
+                candidatesUnit.setText(text);
+                JsonElement surfaceForm = annotation.getAsJsonObject().get("surfaceForm");
+
+                if (surfaceForm.isJsonArray()) {
+                    for (JsonElement sf : surfaceForm.getAsJsonArray()) {
+                        if (sf.isJsonObject()) {
+                            String name = sf.getAsJsonObject().get("@name").toString();
+                            int offset = sf.getAsJsonObject().get("@offset").getAsInt();
+                            SurfaceForm surfaceFormObj = new SurfaceForm(name, offset);
+
+                            JsonElement resource = sf.getAsJsonObject().get("resource");
+                            if (resource.isJsonArray()) {
+                                for (JsonElement rs : resource.getAsJsonArray()) {
+                                    if (rs.isJsonObject()) {
+                                        surfaceFormObj.addResource(getResourceCandidate(rs));
+                                    }
+                                }
+                                candidatesUnit.addSurfaceForm(surfaceFormObj);
+                            } else {
+                                if (resource.isJsonObject()) {
+                                    surfaceFormObj.addResource(getResourceCandidate(resource));
+                                }
+                                candidatesUnit.addSurfaceForm(surfaceFormObj);
+                            }
+                        }
+                    }
+                } else {
+                    if (surfaceForm.isJsonObject()) {
+                        String name = surfaceForm.getAsJsonObject().get("@name").toString();
+                        int offset = surfaceForm.getAsJsonObject().get("@offset").getAsInt();
+                        SurfaceForm surfaceFormObj = new SurfaceForm(name, offset);
+
+                        JsonElement resource = surfaceForm.getAsJsonObject().get("resource");
+                        if (resource.isJsonArray()) {
+                            for (JsonElement rs : resource.getAsJsonArray()) {
+                                if (rs.isJsonObject()) {
+                                    surfaceFormObj.addResource(getResourceCandidate(rs));
+                                }
+                            }
+                            candidatesUnit.addSurfaceForm(surfaceFormObj);
+                        } else {
+                            if (resource.isJsonObject()) {
+                                surfaceFormObj.addResource(getResourceCandidate(resource));
+                            }
+                            candidatesUnit.addSurfaceForm(surfaceFormObj);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (SurfaceForm sf : candidatesUnit.getSurfaceForm()) {
+            for (ResourceCandidate rc : sf.getResources()) {
+                fixPrefixes(rc);
+            }
+        }
+
+        return candidatesUnit;
+    }
+
     public static void main(String[] args) throws IOException {
 
         DBpediaSpotlight spotlight = new DBpediaSpotlight(); // init spotlight
         ParagraphTransformer trans = new ParagraphTransformer();
 
-        String sentence = trans.linkToSentence("this song was played by Europe in the concert");
+        String sentence = trans.linkToSentence("pug");
         AnnotationUnit annotationUnit = spotlight.get(sentence);
 
         if (annotationUnit.getResources() != null) {
@@ -188,6 +319,27 @@ public class DBpediaSpotlight {
                 System.out.println(annotationUnit.getResources().get(i).getOffSet());
                 System.out.println(annotationUnit.getResources().get(i).beginIndex());
                 System.out.println(annotationUnit.getResources().get(i).endIndex());
+                System.out.println();
+            }
+        }
+
+        System.out.println();
+        System.out.println();
+
+        CandidatesUnit candidatesUnit = spotlight.getCandidates(sentence, 0.0, 20);
+        System.out.println(candidatesUnit.getSurfaceForm().size());
+        for (SurfaceForm sf : candidatesUnit.getSurfaceForm()) {
+            System.out.println(sf.getName());
+            for (ResourceCandidate rc : sf.getResources()) {
+                System.out.println(rc.getUri());
+                System.out.println(rc.getLabel());
+                System.out.println(rc.getTypes());
+                System.out.println(rc.getContextualScore());
+                System.out.println(rc.getFinalScore());
+                System.out.println(rc.getPercentageOfSecondRank());
+                System.out.println(rc.getPriorScore());
+                System.out.println(rc.getSupport());
+                System.out.println();
             }
         }
     }
