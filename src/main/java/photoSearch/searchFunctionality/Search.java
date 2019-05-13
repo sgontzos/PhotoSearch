@@ -30,7 +30,10 @@ import java.util.stream.Stream;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import photoSearch.models.AnnotationUnit;
+import photoSearch.models.CandidatesUnit;
 import photoSearch.models.Image;
+import photoSearch.models.ResourceCandidate;
+import photoSearch.models.SurfaceForm;
 import photoSearch.tranformers.ParagraphTransformer;
 
 /**
@@ -269,6 +272,78 @@ public class Search {
         } catch (IOException ex) {
             Logger.getLogger(Search.class
                     .getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    /**
+     * This method sort the input candidates with respect to the input order.
+     *
+     * @param list of candidate resources for a surface form
+     * @param order true for increasing false for decreasing
+     * @return the candidates sorted by their final score
+     */
+    public List<ResourceCandidate> sortCandidates(List<ResourceCandidate> candidates, boolean order) {
+
+        // Sorting the list based on the candidates final scores
+        Collections.sort(candidates, new Comparator<ResourceCandidate>() {
+            @Override
+            public int compare(ResourceCandidate o1, ResourceCandidate o2) {
+                if (order) {
+                    return o1.compareTo(o2);
+                } else {
+                    return o2.compareTo(o1);
+
+                }
+            }
+        });
+
+        return candidates;
+    }
+
+    /**
+     * This method identify named entities in the input query and retrieves
+     * candidate entities from DBpedia that are probable to refer to the
+     * identified entities.
+     *
+     * @param query
+     * @param confidence
+     * @param support
+     * @return an array with all identified entities and their candidate links
+     * in DBpedia
+     */
+    public JSONArray getQueryCandidateEntities(String query, double confidence, int support) {
+        JSONArray surfaceForms = new JSONArray();
+
+        try {
+            CandidatesUnit candidatesUnit = this.spotlight.getCandidates(query, confidence, support);
+
+            for (SurfaceForm sf : candidatesUnit.getSurfaceForm()) {
+
+                JSONObject crntEntity = new JSONObject();
+                JSONArray candidateEntities = new JSONArray();
+                int rank = 0;
+
+                for (ResourceCandidate rc : sortCandidates(sf.getResources(), false)) {
+
+                    JSONObject crntCandidateEntity = new JSONObject();
+                    crntCandidateEntity.put("uri", rc.getUri());
+                    crntCandidateEntity.put("label", rc.getLabel());
+                    crntCandidateEntity.put("types", rc.getTypes());
+                    crntCandidateEntity.put("score", rc.getFinalScore());
+
+                    candidateEntities.put(crntCandidateEntity);
+                }
+
+                crntEntity.put("name", sf.getName());
+                crntEntity.put("candidates", candidateEntities);
+
+                surfaceForms.put(rank++, crntEntity);
+            }
+
+            return surfaceForms;
+        } catch (IOException ex) {
+            Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
