@@ -52,5 +52,20 @@ public class PhotoSearchAPI {
             return results;
         });
 
+        get("/extract_candidate_entities", (req, res) -> {
+
+            String query = req.queryParams("query").toString();
+            double confidence = Double.valueOf(req.queryParams("conf").toString());
+            int support = Integer.valueOf(req.queryParams("sup").toString());
+            JSONArray results = API.getQueryCandidateEntities(query, confidence, support);
+            if (results == null) {
+                res.status(412);
+            } else {
+                res.status(200);
+            }
+
+            return results;
+        });
+
     }
 }
