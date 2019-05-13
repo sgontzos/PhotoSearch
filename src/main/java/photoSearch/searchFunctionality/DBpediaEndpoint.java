@@ -12,6 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.jena.query.*;
 import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
+import static photoSearch.models.Prefixes.*;
 
 /**
  * This class is used to send SPARQL queries to DBpedia Live endpoint and gather
@@ -21,11 +22,6 @@ import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
  */
 public class DBpediaEndpoint {
 
-    private static final String dbo = "<http://dbpedia.org/ontology/>";
-    private static final String dbp = "<http://dbpedia.org/property/>";
-    private static final String dbr = "<http://dbpedia.org/resource/>";
-    private static final String rdf = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#>";
-    private static final String rdfs = "<http://www.w3.org/2000/01/rdf-schema#>";
     private static final String prefixes = "PREFIX dbo: " + dbo + " PREFIX dbp: " + dbp + " PREFIX dbr: " + dbr + " PREFIX rdf: " + rdf + " PREFIX rdfs: " + rdfs + " ";
     private static final String endPoint = "http://dbpedia.org/sparql";
 
