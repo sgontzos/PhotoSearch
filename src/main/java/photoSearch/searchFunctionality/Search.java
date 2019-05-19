@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -71,7 +72,7 @@ public class Search {
         Stream<String> stream = new BufferedReader(new InputStreamReader(is, "UTF-8")).lines();
 
         stream.forEach(row -> insertImageRowData(row));
-        
+
         this.collectionSize = this.images.size();
     }
 
@@ -219,9 +220,8 @@ public class Search {
 
         JSONArray mostSimDes = new JSONArray();
 
-        //ArrayList<String> mostSimDes = new ArrayList<>();
         int descIndex = 0;
-        scoreDescriptions(this.trans.listToSentence(this.trans.getCleanTokens(query)));
+        scoreDescriptions(this.trans.listToSentence(new ArrayList<>(new HashSet<>(this.trans.getCleanTokens(query)))));
         HashMap<String, Image> images_sorted = SortImages(false);
         for (Image image : images_sorted.values()) {
             if (descIndex < k && image.getScore() > 0.0) {
@@ -238,6 +238,53 @@ public class Search {
         }
 
         return mostSimDes;
+    }
+
+    /**
+     * This is an extention of getMostSimilarDescriptions. It first extend the
+     * query with the DBpedia abstract or Categories of the input URI and then
+     * calls getMostSimilarDescriptions to score and sort the collection of
+     * images using SortImages and scoreDescriptions methods and return the top
+     * k images.
+     *
+     * @param query
+     * @param uri the URI of the entity which will be used to extend the query
+     * @param k parameter that defines how many images will be returned
+     * @param expansion parameter that defines they type of the query expansion,
+     * i.e type or abstract
+     * @return top k scored Images based on the extended input query
+     */
+    public JSONArray advancedSearch(String query, String[] uris, int k, String expansion) {
+
+        if (expansion.equals("type")) {
+
+            HashSet<String> types = new HashSet<>();
+            for (String uri : uris) {
+                types.addAll(this.endpoint.getSubjects(uri));
+            }
+
+            HashSet<String> typesNL = new HashSet<>();
+            for (String type : types) {
+                typesNL.add(this.trans.linkToSentence(type).replace("Category:", ""));
+            }
+
+            String typesExpansion = typesNL.toString();
+            query += typesExpansion;
+
+        } else if (expansion.equals("abstract")) {
+
+            HashSet<String> abstracts = new HashSet<>();
+
+            for (String uri : uris) {
+                abstracts.add(this.endpoint.getAbstract(uri));
+            }
+
+            String absExpansion = abstracts.toString();
+
+            query += absExpansion;
+        }
+
+        return getMostSimilarDescriptions(query, k);
     }
 
     /**
@@ -322,7 +369,6 @@ public class Search {
 
                 JSONObject crntEntity = new JSONObject();
                 JSONArray candidateEntities = new JSONArray();
-                int rank = 0;
 
                 for (ResourceCandidate rc : sortCandidates(sf.getResources(), false)) {
 
@@ -330,6 +376,12 @@ public class Search {
                     crntCandidateEntity.put("uri", rc.getUri());
                     crntCandidateEntity.put("label", rc.getLabel());
                     crntCandidateEntity.put("types", rc.getTypes());
+
+                    ArrayList<String> typesNL = new ArrayList<>();
+                    for (String type : rc.getTypes().split(",")) {
+                        typesNL.add(this.trans.linkToSentence(type));
+                    }
+                    crntCandidateEntity.put("typesNL", typesNL.toString().substring(1, typesNL.toString().length() - 1));
                     crntCandidateEntity.put("score", rc.getFinalScore());
 
                     candidateEntities.put(crntCandidateEntity);
@@ -338,7 +390,7 @@ public class Search {
                 crntEntity.put("name", sf.getName());
                 crntEntity.put("candidates", candidateEntities);
 
-                surfaceForms.put(rank++, crntEntity);
+                surfaceForms.put(crntEntity);
             }
 
             return surfaceForms;
@@ -346,6 +398,25 @@ public class Search {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
+    }
+
+    /**
+     * This method extract the abstract description of the input URI from
+     * DBpedia and returns it as a JSON Object in order to be transferable
+     * through the network.
+     *
+     * @param uri for which the abstract is needed.
+     * @return the DBpedia abstract of the input URI as a JSON Object in order
+     * to be transferable through the network
+     */
+    public JSONObject getAbstract(String uri) {
+        JSONObject absJSON = new JSONObject();
+
+        String abs = this.getEndpoint().getAbstract(uri);
+
+        absJSON.put("abstract", abs);
+
+        return absJSON;
     }
 
     /**
@@ -373,6 +444,15 @@ public class Search {
      */
     public ParagraphTransformer getTransformer() {
         return this.trans;
+    }
+
+    /**
+     * Return the DBpediaEndpoint
+     *
+     * @return DBpediaEndpoint
+     */
+    public DBpediaEndpoint getEndpoint() {
+        return this.endpoint;
     }
 
     /**
