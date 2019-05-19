@@ -160,7 +160,7 @@ public class ParagraphTransformer {
         tokens = this.filterOutStopWords(tokens);
         tokens = Arrays.asList(tokens.toString().replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+"));
 
-        return tokens;
+        return new ArrayList<>(tokens);
     }
 
     /**
