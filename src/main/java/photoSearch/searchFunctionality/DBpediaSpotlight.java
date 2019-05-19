@@ -172,6 +172,7 @@ public class DBpediaSpotlight {
      */
     public AnnotationUnit get(String text) throws IOException {
 
+        text = text.replaceAll("_", " ").replaceAll("\\(", "").replace("\\)", "");
         List<NameValuePair> params = new ArrayList<NameValuePair>();
         params.add(new BasicNameValuePair("text", text));
         requestAnno.setEntity(new UrlEncodedFormEntity(params));
@@ -326,7 +327,7 @@ public class DBpediaSpotlight {
         System.out.println();
         System.out.println();
 
-        CandidatesUnit candidatesUnit = spotlight.getCandidates(sentence, 0.0, 20);
+        CandidatesUnit candidatesUnit = spotlight.getCandidates(sentence, 0.0, 0);
         System.out.println(candidatesUnit.getSurfaceForm().size());
         for (SurfaceForm sf : candidatesUnit.getSurfaceForm()) {
             System.out.println(sf.getName());
