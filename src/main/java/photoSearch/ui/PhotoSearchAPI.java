@@ -1,6 +1,7 @@
 package photoSearch.ui;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 import photoSearch.searchFunctionality.Search;
 import static spark.Spark.*;
 
@@ -67,5 +68,39 @@ public class PhotoSearchAPI {
             return results;
         });
 
+        get("/extract_entity_abstract", (req, res) -> {
+
+            String uri = req.queryParams("uri").toString();
+
+            JSONObject result = API.getAbstract(uri);
+
+            if (result == null) {
+                res.status(412);
+            } else {
+                res.status(200);
+            }
+
+            return result;
+        });
+
+        get("/advanced_search", (req, res) -> {
+
+            String expansion = req.queryParams("expansion").toString();
+            String query = req.queryParams("query").toString();
+            String[] uris = req.queryParams("uris").toString().split(",");
+            System.out.println(uris);
+
+            JSONArray results = API.advancedSearch(query, uris, API.getCollectionSize(), expansion);
+
+            System.out.println(results);
+
+            if (results.isEmpty()) {
+                res.status(412);
+            } else {
+                res.status(200);
+            }
+
+            return results;
+        });
     }
 }
