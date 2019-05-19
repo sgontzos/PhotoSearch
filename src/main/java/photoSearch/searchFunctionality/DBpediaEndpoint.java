@@ -22,8 +22,9 @@ import static photoSearch.models.Prefixes.*;
  */
 public class DBpediaEndpoint {
 
-    private static final String prefixes = "PREFIX dbo: " + dbo + " PREFIX dbp: " + dbp + " PREFIX dbr: " + dbr + " PREFIX rdf: " + rdf + " PREFIX rdfs: " + rdfs + " ";
-    private static final String endPoint = "http://dbpedia.org/sparql";
+    private static final String prefixes = "PREFIX dbo: " + dbo + " PREFIX dbp: " + dbp + " PREFIX dbr: " + dbr + " PREFIX rdf: " + rdf + " PREFIX rdfs: " + rdfs + " PREFIX dct: " + dct + " PREFIX dbc: " + dbc + " ";
+    //private static final String endPoint = "http://dbpedia.org/sparql";
+    private static final String endPoint = "http://dbpedia-live.openlinksw.com/sparql";
 
     /**
      * Creates a DBpediaEndpoint instance and initializes Jena query system
@@ -169,6 +170,97 @@ public class DBpediaEndpoint {
         return null;
     }
 
+    /**
+     * This method returns the DBpedia types of the input URI.
+     *
+     * @param uri of which the types are needed.
+     * @return the English string representation of the types
+     */
+    public ArrayList<String> getTypes(String slot_uri) {
+        try {
+            slot_uri = fixURI(slot_uri);
+            String query = prefixes
+                    + "SELECT ?type WHERE {"
+                    + "{" + slot_uri + " dbo:type ?type .} UNION "
+                    + "{" + slot_uri + " dbr:type ?type .} UNION "
+                    + "{" + slot_uri + " dbp:type ?type .} UNION "
+                    + "{" + slot_uri + " rdf:type ?type .} "
+                    + "}";
+
+            ArrayList<String> types = this.queryEndpoint(query, this.endPoint);
+
+            ArrayList<String> typesClean = new ArrayList<>();
+
+            if (types != null) {
+                for (String crntType : types) {
+                    typesClean.add(crntType.substring(6, crntType.length() - 1));
+                }
+                return typesClean;
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(DBpediaEndpoint.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    /**
+     * This method extracts the DBpedia subjects (topics, categories) of the
+     * input URI.
+     *
+     * @param slot_uri
+     * @return ArrayList of the string representations of the subjects of     * the input URI
+     */
+    public ArrayList<String> getSubjects(String slot_uri) {
+        try {
+            slot_uri = fixURI(slot_uri);
+            String query = prefixes
+                    + "SELECT ?sbj WHERE {"
+                    + slot_uri + " dct:subject ?sbj . "
+                    + "}";
+
+            ArrayList<String> subjects = this.queryEndpoint(query, this.endPoint);
+
+            ArrayList<String> subjectsClean = new ArrayList<>();
+
+            if (subjects != null) {
+                for (String crntSbj : subjects) {
+                    subjectsClean.add(crntSbj.substring(5, crntSbj.length() - 1));
+                }
+                return subjectsClean;
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(DBpediaEndpoint.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    /**
+     * This method checks whether the input resource (first parameter) is
+     * subClass of the input superClass (second parameter).
+     *
+     * @param Class resource to be checked if is subClass of the superClass
+     * @param superClass resource to be checked if is superClass of the Class
+     * @return true if Class is subClass of superClass, false otherwise
+     */
+    public boolean isSuperClass(String resource, String superClass) {
+        try {
+            resource = fixURI(resource);
+            superClass = fixURI(superClass);
+            String isSuperClassQuery = prefixes
+                    + "ASK { "
+                    + resource + " rdfs:subClassOf* " + superClass + " . "
+                    + "}";
+
+            boolean isSuperClass = Boolean.valueOf(this.queryEndpoint(isSuperClassQuery, this.endPoint).get(0));
+
+            return isSuperClass;
+        } catch (Exception ex) {
+            Logger.getLogger(DBpediaEndpoint.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        return Boolean.FALSE;
+    }
+
     public static void main(String[] args) throws IOException {
 
         DBpediaEndpoint ep = new DBpediaEndpoint();
@@ -176,5 +268,9 @@ public class DBpediaEndpoint {
         System.out.println(ep.getAbstract("http://dbpedia.org/resource/Bruce_Dickinson"));
         System.out.println(ep.isClass("http://dbpedia.org/resource/Bruce_Dickinson"));
         System.out.println(ep.isClass("http://dbpedia.org/resource/Country"));
+        System.out.println(ep.getTypes("http://dbpedia.org/resource/United_States"));
+        System.out.println(ep.getSubjects("http://dbpedia.org/resource/United_States"));
+        System.out.println(ep.isSuperClass("http://dbpedia.org/ontology/MusicalArtist", "http://xmlns.com/foaf/0.1/Person"));
+
     }
 }
