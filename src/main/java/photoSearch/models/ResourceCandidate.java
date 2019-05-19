@@ -8,6 +8,7 @@ package photoSearch.models;
 import java.util.ArrayList;
 import java.util.List;
 import static photoSearch.models.Constants.COMMA;
+import static photoSearch.models.Prefixes.dbr;
 
 /**
  *
@@ -25,7 +26,7 @@ public class ResourceCandidate {
 
     public ResourceCandidate(String uri, String label, String contextualScore, String percentageOfSecondRank,
             String support, String priorScore, String finalScore, String types) {
-        this.uri = uri.replace("\"", "");
+        this.uri = dbr.substring(1, dbr.length() - 1) + uri.replace("\"", "");
         this.label = label.replace("\"", "");
         this.contextualScore = contextualScore.replace("\"", "");
         this.percentageOfSecondRank = percentageOfSecondRank.replace("\"", "");

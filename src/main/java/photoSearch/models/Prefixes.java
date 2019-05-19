@@ -16,4 +16,8 @@ public interface Prefixes {
 
     String rdfs = "<http://www.w3.org/2000/01/rdf-schema#>";
 
+    String dct = "<http://purl.org/dc/terms/>";
+
+    String dbc = "<http://dbpedia.org/resource/Category:>";
+
 }
