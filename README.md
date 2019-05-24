@@ -1,7 +1,6 @@
 # PhotoSearch
 
 ## Introduction
-Welcome to the **PhotoSearch** wiki!
 
 **PhotoSearch** is a project that was mainly designed for personal skill presentation, improvement and... for fun!
 
