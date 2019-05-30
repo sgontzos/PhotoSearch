@@ -32,7 +32,10 @@ public class PhotoSearchAPI {
         get("/search", (req, res) -> {
 
             JSONArray results = API.getMostSimilarDescriptions(req.queryParams("query").toString(), API.getCollectionSize());
+
             if (results == null) {
+                res.status(412);
+            } else if (results.isEmpty()) {
                 res.status(412);
             } else {
                 res.status(200);
@@ -45,6 +48,8 @@ public class PhotoSearchAPI {
 
             JSONArray results = API.getImageEntities(req.params(":id"));
             if (results == null) {
+                res.status(412);
+            } else if (results.isEmpty()) {
                 res.status(412);
             } else {
                 res.status(200);
@@ -59,7 +64,11 @@ public class PhotoSearchAPI {
             double confidence = Double.valueOf(req.queryParams("conf").toString());
             int support = Integer.valueOf(req.queryParams("sup").toString());
             JSONArray results = API.getQueryCandidateEntities(query, confidence, support);
+
             if (results == null) {
+                results = new JSONArray();
+                res.status(412);
+            } else if (results.isEmpty()) {
                 res.status(412);
             } else {
                 res.status(200);
@@ -75,6 +84,9 @@ public class PhotoSearchAPI {
             JSONObject result = API.getAbstract(uri);
 
             if (result == null) {
+                result = new JSONObject();
+                res.status(412);
+            } else if (result.isEmpty()) {
                 res.status(412);
             } else {
                 res.status(200);
@@ -88,13 +100,13 @@ public class PhotoSearchAPI {
             String expansion = req.queryParams("expansion").toString();
             String query = req.queryParams("query").toString();
             String[] uris = req.queryParams("uris").toString().split(",");
-            System.out.println(uris);
 
             JSONArray results = API.advancedSearch(query, uris, API.getCollectionSize(), expansion);
 
-            System.out.println(results);
-
-            if (results.isEmpty()) {
+            if (results == null) {
+                results = new JSONArray();
+                res.status(412);
+            } else if (results.isEmpty()) {
                 res.status(412);
             } else {
                 res.status(200);

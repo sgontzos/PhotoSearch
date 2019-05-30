@@ -396,8 +396,11 @@ public class Search {
             return surfaceForms;
         } catch (IOException ex) {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NullPointerException ex) {
+            Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            return null;
         }
-        return null;
     }
 
     /**
