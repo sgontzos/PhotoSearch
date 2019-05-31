@@ -68,7 +68,7 @@ public class Search {
     public final void initDescriptions(String FilePath) throws FileNotFoundException, IOException {
         this.images = new HashMap<>();
 
-        FileInputStream is = new FileInputStream("C:\\Users\\Sgo\\Desktop\\DATASETS\\GoogleImages\\googleImagesDev.tsv");
+        FileInputStream is = new FileInputStream(FilePath);
         Stream<String> stream = new BufferedReader(new InputStreamReader(is, "UTF-8")).lines();
 
         stream.forEach(row -> insertImageRowData(row));
@@ -396,9 +396,9 @@ public class Search {
             return surfaceForms;
         } catch (IOException ex) {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
         } catch (NullPointerException ex) {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
             return null;
         }
     }
