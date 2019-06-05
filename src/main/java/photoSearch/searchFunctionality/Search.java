@@ -56,6 +56,7 @@ public class Search {
     private ParagraphTransformer trans;
     private DBpediaSpotlight spotlight;
     private DBpediaEndpoint endpoint;
+    int cores = Runtime.getRuntime().availableProcessors();
 
     public Search(String filePath) {
         try {
@@ -175,7 +176,7 @@ public class Search {
     public void scoreDescriptions(String query) {
         try {
 
-            ExecutorService EXEC = Executors.newFixedThreadPool(8);
+            ExecutorService EXEC = Executors.newFixedThreadPool(this.cores);
             List<Callable<Image>> tasks = new ArrayList<Callable<Image>>();
 
             for (Image image : this.images.values()) {
