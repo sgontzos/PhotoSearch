@@ -25,6 +25,11 @@ import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -168,9 +173,35 @@ public class Search {
      * @param input query
      */
     public void scoreDescriptions(String query) {
-        for (Image image : this.images.values()) {
-            image.setScore(JaccardSimilarity(mergeArrays(image.getParseDescription().split(" "), image.getParsedLink().split(" ")), query.split(" ")));
-            this.images.put(image.getId(), image);
+        try {
+
+            ExecutorService EXEC = Executors.newFixedThreadPool(8);
+            List<Callable<Image>> tasks = new ArrayList<Callable<Image>>();
+
+            for (Image image : this.images.values()) {
+                Callable<Image> c = new Callable<Image>() {
+                    @Override
+                    public Image call() throws Exception {
+                        image.setScore(JaccardSimilarity(mergeArrays(image.getParseDescription().split(" "), image.getParsedLink().split(" ")), query.split(" ")));
+                        return image;
+                    }
+                };
+                tasks.add(c);
+
+            }
+
+            List<Future<Image>> resultImages;
+
+            resultImages = EXEC.invokeAll(tasks);
+
+            for (Future<Image> img : resultImages) {
+                this.images.put(img.get().getId(), img.get());
+            }
+
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ExecutionException ex) {
+            Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
