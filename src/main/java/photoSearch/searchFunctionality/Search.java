@@ -172,8 +172,9 @@ public class Search {
      * their descriptions/links and the input query.
      *
      * @param input query
+     * @return relevant images scored as a HashMap
      */
-    public void scoreDescriptions(String query) {
+    public HashMap<String, Image> scoreDescriptions(String query) {
         try {
 
             ExecutorService EXEC = Executors.newFixedThreadPool(this.cores);
@@ -195,27 +196,37 @@ public class Search {
 
             resultImages = EXEC.invokeAll(tasks);
 
-            for (Future<Image> img : resultImages) {
-                this.images.put(img.get().getId(), img.get());
+            Image img;
+            HashMap<String, Image> relevantImages = new HashMap<>();
+
+            for (Future<Image> fimg : resultImages) {
+                img = fimg.get();
+                if (img.getScore() > 0.0) {
+                    relevantImages.put(img.getId(), img);
+                }
             }
 
+            return relevantImages;
         } catch (InterruptedException ex) {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
         } catch (ExecutionException ex) {
             Logger.getLogger(Search.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        return null;
     }
 
     /**
      * Sorts the images in the input order based on their calculated similarity
      * and returns copy of the collection sorted.
      *
+     * @param relevant images scored as a HashMap
      * @param order i.e. false for decreasing or true for increasing order
      * @return a copy of the collection of images sorted in the input order
      */
-    public HashMap<String, Image> SortImages(final boolean order) {
+    public HashMap<String, Image> SortImages(HashMap<String, Image> relevantImages, final boolean order) {
 
-        List<Entry<String, Image>> list = new LinkedList<>(this.images.entrySet());
+        List<Entry<String, Image>> list = new LinkedList<>(relevantImages.entrySet());
 
         // Sorting the list based on values
         Collections.sort(list, new Comparator<Entry<String, Image>>() {
@@ -253,19 +264,19 @@ public class Search {
         JSONArray mostSimDes = new JSONArray();
 
         int descIndex = 0;
-        scoreDescriptions(this.trans.listToSentence(new ArrayList<>(new HashSet<>(this.trans.getCleanTokens(query)))));
-        HashMap<String, Image> images_sorted = SortImages(false);
+        HashMap<String, Image> relevantImages = scoreDescriptions(this.trans.listToSentence(new ArrayList<>(new HashSet<>(this.trans.getCleanTokens(query)))));
+        HashMap<String, Image> images_sorted = SortImages(relevantImages, false);
         for (Image image : images_sorted.values()) {
-            if (descIndex < k && image.getScore() > 0.0) {
-                JSONObject crntDes = new JSONObject();
+            if (descIndex < k) {
+            JSONObject crntDes = new JSONObject();
 
-                crntDes.put("id", image.getId());
-                crntDes.put("description", image.getDescription());
-                crntDes.put("link", image.getLink());
-                crntDes.put("linkNL", image.getLinkNL());
-                mostSimDes.put(crntDes);
+            crntDes.put("id", image.getId());
+            crntDes.put("description", image.getDescription());
+            crntDes.put("link", image.getLink());
+            crntDes.put("linkNL", image.getLinkNL());
+            mostSimDes.put(crntDes);
 
-                descIndex++;
+            descIndex++;
             }
         }
 
