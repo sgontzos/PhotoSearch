@@ -4,7 +4,7 @@
 
 **PhotoSearch** is a project that was mainly designed for personal skill presentation, improvement and... for fun!
 
-Its basic functionality is Keyword search over image links and descriptions.
+It is a gradle project and its basic functionality is Keyword search over image links and descriptions.
 It also provides Named Entity Identification and Linking (over the image links) to DBpedia through DBpedia Spotlight API.
 Moreover, the entities that are identified on the fly are also used for Information Extraction over DBpedia Live open linked dataset through SPARQL Queries (Apache Jena is used as query API). Finally, the extracted information (i.e. types, categories and abstracts) are used for query expansion, which is useful mostly in cases where no images are able to be retrieved through the simple keyword functionality (i.e. Jaccard Similarity).
 
